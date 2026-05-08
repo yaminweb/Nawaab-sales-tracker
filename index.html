@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Nawaab Sales Tracker</title>
+<title>Daily Sales Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -143,6 +144,30 @@ tfoot .gt{color:var(--acc);font-size:1rem;padding-right:13px}
 .ctog.on .tog::after{left:18px}
 .toast{position:fixed;bottom:1.4rem;right:1.4rem;background:var(--nvy);color:#fff;font-size:.91rem;padding:11px 20px;border-radius:var(--r);opacity:0;pointer-events:none;transition:opacity .2s;font-family:var(--f);z-index:9999;font-weight:700;max-width:300px}
 .toast.show{opacity:1}
+
+/* ── EOD SUMMARY TAB ── */
+.eod-wrap{display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start}
+.eod-form{flex:1;min-width:280px;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:1.5rem}
+.eod-form h3{font-size:1.05rem;font-weight:700;margin-bottom:1.2rem;padding-bottom:.6rem;border-bottom:1px solid var(--bdr)}
+.eod-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
+.eod-row label{font-size:.88rem;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;flex:1}
+.eod-row input,.eod-row select{width:140px;padding:7px 10px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--bg);color:var(--txt);font-size:.95rem;font-family:var(--f);text-align:right;font-weight:700}
+.eod-row select{text-align:left}
+.eod-row input.wide{width:100%;text-align:left;font-weight:400}
+.eod-divider{height:1px;background:var(--bdr);margin:14px 0}
+.eod-btns{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:1.2rem}
+.eod-btns .span2{grid-column:span 2}
+.eod-preview{flex:0 0 auto}
+/* receipt card */
+.receipt-card{background:#fff;width:300px;padding:22px;color:#000;border:2px solid #000;font-family:'Courier New',Courier,monospace;font-size:13px}
+.receipt-card .rh{text-align:center;border-bottom:4px solid #000;padding-bottom:12px;margin-bottom:14px}
+.receipt-card .rh .rname{font-size:17px;font-weight:900;font-family:Arial,sans-serif;letter-spacing:1px}
+.receipt-card .rh .rdate{font-weight:700;margin-top:4px;font-family:Arial,sans-serif;font-size:12px}
+.receipt-card .ritem{display:flex;justify-content:space-between;margin:6px 0;font-weight:600}
+.receipt-card .rtotal{border-top:3px solid #000;margin-top:12px;padding-top:10px;font-size:20px;font-weight:900;display:flex;justify-content:space-between;font-family:Arial,sans-serif}
+.receipt-card .rref{margin-top:16px;border-top:2px dashed #000;padding-top:12px}
+.receipt-card .rexp-desc{font-size:11px;font-style:italic;color:#333;margin:-4px 0 8px;display:block}
+.receipt-card .rfooter{text-align:center;font-size:10px;margin-top:22px;border-top:1px solid #000;padding-top:8px;font-weight:900;font-family:Arial,sans-serif}
 </style>
 </head>
 <body>
@@ -163,6 +188,7 @@ tfoot .gt{color:var(--acc);font-size:1rem;padding-right:13px}
     <button class="tab active" onclick="showTab('weekly')">Weekly Report</button>
     <button class="tab" onclick="showTab('scanner')">Scan Receipt</button>
     <button class="tab" onclick="showTab('history')">History</button>
+    <button class="tab" onclick="showTab('eod')">EOD Summary</button>
     <button class="tab" onclick="showTab('settings')">Settings</button>
   </div>
 
@@ -214,6 +240,76 @@ tfoot .gt{color:var(--acc);font-size:1rem;padding-right:13px}
       <select class="ci" id="hfil" onchange="renderHist()"><option value="">All time</option></select>
     </div>
     <div id="hlist"></div>
+  </div>
+
+  <!-- EOD SUMMARY -->
+  <div id="eod" class="sec">
+    <div class="eod-wrap">
+
+      <!-- FORM -->
+      <div class="eod-form">
+        <h3>&#128203; EOD Summary</h3>
+
+        <div class="eod-row">
+          <label>Restaurant</label>
+          <select id="eod-res" onchange="eodUpdate()">
+            <option value="KEBAB CORNER">Kebab Corner</option>
+            <option value="NAWAAB INDIAN RESTAURANT">Nawaab Indian Restaurant</option>
+            <option value="NAWAAB GRILLED &amp; INDIAN TAKEAWAY">Nawaab Grilled &amp; Indian Takeaway</option>
+            <option value="GRILL MASTER">Grill Master</option>
+            <option value="KING KEBAB">King Kebab</option>
+            <option value="DESHI">Deshi</option>
+          </select>
+        </div>
+
+        <div class="eod-row"><label>Cash</label><input type="number" id="eod-cash" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+        <div class="eod-row"><label>Card</label><input type="number" id="eod-card" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+        <div class="eod-row"><label>Web</label><input type="number" id="eod-web" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+        <div class="eod-row"><label>Just Eat</label><input type="number" id="eod-je" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+        <div class="eod-row"><label>Uber Eats</label><input type="number" id="eod-ue" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+        <div class="eod-row"><label>Deliveroo</label><input type="number" id="eod-dr" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+        <div class="eod-row"><label>Foodhub</label><input type="number" id="eod-fh" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+
+        <div class="eod-divider"></div>
+
+        <div class="eod-row"><label>Expenses</label><input type="number" id="eod-exp" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+        <div class="eod-row" style="margin-top:-6px"><label></label><input type="text" id="eod-expdesc" class="wide" placeholder="Expense description..." oninput="eodUpdate()"/></div>
+        <div class="eod-row"><label>Till Left</label><input type="number" id="eod-till" min="0" step="0.01" placeholder="0.00" oninput="eodUpdate()"/></div>
+
+        <div class="eod-btns">
+          <button class="btn br span2" onclick="eodDownload()">&#11123; Download JPEG</button>
+          <button class="btn bo" onclick="eodPrint()">&#128438; Print</button>
+          <button class="btn bd" onclick="eodClear()">Reset</button>
+        </div>
+        <div style="margin-top:1rem;font-size:.78rem;color:var(--mut);text-align:center;font-weight:700;letter-spacing:1px">DESIGNED BY YAMIN</div>
+      </div>
+
+      <!-- RECEIPT PREVIEW -->
+      <div class="eod-preview">
+        <div style="font-size:.8rem;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Live Preview</div>
+        <div class="receipt-card" id="eod-receipt">
+          <div class="rh">
+            <div class="rname" id="er-name">KEBAB CORNER</div>
+            <div class="rdate" id="er-date">DATE: --/--/----</div>
+          </div>
+          <div class="ritem"><span>CASH SALES</span><span id="er-cash">£0.00</span></div>
+          <div class="ritem"><span>CARD SALES</span><span id="er-card">£0.00</span></div>
+          <div class="ritem"><span>WEB SALES</span><span id="er-web">£0.00</span></div>
+          <div class="ritem"><span>JUST EAT</span><span id="er-je">£0.00</span></div>
+          <div class="ritem"><span>UBER EAT</span><span id="er-ue">£0.00</span></div>
+          <div class="ritem"><span>DELIVEROO</span><span id="er-dr">£0.00</span></div>
+          <div class="ritem"><span>FOODHUB</span><span id="er-fh">£0.00</span></div>
+          <div class="rtotal"><span>TOTAL</span><span id="er-total">£0.00</span></div>
+          <div class="rref">
+            <div class="ritem"><span>EXPENSES</span><span id="er-exp">£0.00</span></div>
+            <span class="rexp-desc" id="er-expdesc"></span>
+            <div class="ritem"><span>TILL LEFT</span><span id="er-till">£0.00</span></div>
+          </div>
+          <div class="rfooter">*** END OF SUMMARY ***</div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
   <!-- SETTINGS -->
@@ -463,12 +559,13 @@ function chWk(dir){ curMon=new Date(curMon); curMon.setDate(curMon.getDate()+dir
 function jumpTo(v){ if(!v)return; curMon=getMonday(new Date(v)); renderWeek() }
 
 function showTab(t){
-  var names=['weekly','scanner','history','settings'];
+  var names=['weekly','scanner','history','eod','settings'];
   document.querySelectorAll('.tab').forEach(function(el,i){ el.classList.toggle('active',names[i]===t) });
   document.querySelectorAll('.sec').forEach(function(el){ el.classList.remove('active') });
   document.getElementById(t).classList.add('active');
   if(t==='history')  renderHist();
   if(t==='settings'){ renderColToggles(); showCurrentURL(); }
+  if(t==='eod') eodUpdate();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -733,7 +830,7 @@ function dlPDF(){
 
   var ph=doc.internal.pageSize.getHeight();
   doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(180,180,180);
-  doc.text('Nawaab Sales Tracker • '+MONTHS[month]+' '+year, 14, ph-5);
+  doc.text('Daily Sales Tracker • '+MONTHS[month]+' '+year, 14, ph-5);
   doc.save('Sales-'+MONTHS[month]+'-'+year+'.pdf');
   toast('PDF saved');
 }
@@ -782,6 +879,72 @@ function clearAll(){ if(confirm('Delete ALL data permanently?')){ db={}; saveDB(
 function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show') },2800) }
 
 // ════════════════════════════════════════════════════════════
+// EOD SUMMARY
+// ════════════════════════════════════════════════════════════
+function eodVal(id){ return parseFloat(document.getElementById(id).value)||0; }
+function eodFmt(n){ return '£'+n.toFixed(2); }
+
+function eodUpdate(){
+  var keys = ['cash','card','web','je','ue','dr','fh'];
+  var total = 0;
+  keys.forEach(function(k){
+    var v = eodVal('eod-'+k);
+    document.getElementById('er-'+k).textContent = eodFmt(v);
+    total += v;
+  });
+  document.getElementById('er-name').textContent  = document.getElementById('eod-res').value;
+  document.getElementById('er-date').textContent  = 'DATE: '+new Date().toLocaleDateString('en-GB');
+  document.getElementById('er-total').textContent = eodFmt(total);
+  document.getElementById('er-exp').textContent   = eodFmt(eodVal('eod-exp'));
+  document.getElementById('er-till').textContent  = eodFmt(eodVal('eod-till'));
+  var desc = document.getElementById('eod-expdesc').value.trim();
+  document.getElementById('er-expdesc').textContent = desc ? '('+desc+')' : '';
+}
+
+function eodDownload(){
+  var res = document.getElementById('eod-res').value;
+  html2canvas(document.getElementById('eod-receipt'),{ scale:3, backgroundColor:'#ffffff' }).then(function(canvas){
+    var a = document.createElement('a');
+    a.download = res.replace(/\s+/g,'_')+'_EOD.jpg';
+    a.href = canvas.toDataURL('image/jpeg',1.0);
+    a.click();
+    toast('JPEG downloaded');
+  });
+}
+
+function eodPrint(){
+  var content = document.getElementById('eod-receipt').outerHTML;
+  var w = window.open('','','width=450,height=700');
+  w.document.write('<!DOCTYPE html><html><head><title>EOD Receipt</title>');
+  w.document.write('<style>');
+  w.document.write('body{margin:20px;font-family:"Courier New",Courier,monospace;font-size:13px;color:#000}');
+  w.document.write('.receipt-card{background:#fff;width:300px;padding:22px;border:2px solid #000}');
+  w.document.write('.rh{text-align:center;border-bottom:4px solid #000;padding-bottom:12px;margin-bottom:14px}');
+  w.document.write('.rname{font-size:17px;font-weight:900;font-family:Arial,sans-serif;letter-spacing:1px}');
+  w.document.write('.rdate{font-weight:700;margin-top:4px;font-family:Arial,sans-serif;font-size:12px}');
+  w.document.write('.ritem{display:flex;justify-content:space-between;margin:6px 0;font-weight:600}');
+  w.document.write('.rtotal{border-top:3px solid #000;margin-top:12px;padding-top:10px;font-size:20px;font-weight:900;display:flex;justify-content:space-between;font-family:Arial,sans-serif}');
+  w.document.write('.rref{margin-top:16px;border-top:2px dashed #000;padding-top:12px}');
+  w.document.write('.rexp-desc{font-size:11px;font-style:italic;color:#333;margin:-4px 0 8px;display:block}');
+  w.document.write('.rfooter{text-align:center;font-size:10px;margin-top:22px;border-top:1px solid #000;padding-top:8px;font-weight:900;font-family:Arial,sans-serif}');
+  w.document.write('</style></head><body>');
+  w.document.write(content);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); w.close(); }, 500);
+}
+
+function eodClear(){
+  ['cash','card','web','je','ue','dr','fh','exp','till'].forEach(function(k){
+    document.getElementById('eod-'+k).value='';
+  });
+  document.getElementById('eod-expdesc').value='';
+  eodUpdate();
+  toast('EOD form reset');
+}
+
+// ════════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════════
 document.getElementById('dchip').textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -789,286 +952,5 @@ if(SHEET_URL && SHEET_URL.indexOf('YOUR_SCRIPT_ID')===-1) setSyncUI('ok','Sheet 
 else setSyncUI('err','No Sheet URL');
 renderWeek();
 </script>
-</body>
-</html>
-<!DOCTYPE html> 
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EOD Summary Tool</title>
-    <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;700;900&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-    <style>
-        body {
-            font-family: 'Libre Franklin', sans-serif;
-            margin: 0; padding: 20px;
-            display: flex; flex-direction: column; align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
-            background-size: 400% 400%;
-            animation: gradientMove 10s ease infinite;
-        }
-
-        body::before {
-            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3col filter='url(%23noiseFilter)'/%3e%3cfilter id='noiseFilter'%3e%3cfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3'/%3e%3c/filter%3e%3c/svg%3e");
-            opacity: 0.15; z-index: -1; pointer-events: none;
-        }
-
-        @keyframes gradientMove {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .admin-panel { 
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(15px);
-            width: 100%;
-            max-width: 480px;
-            padding: 30px;
-            border-radius: 24px;
-            border: 1px solid rgba(255,255,255,0.2);
-            margin-bottom: 30px;
-            color: #fff;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-
-        .row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            gap: 10px;
-        }
-
-        label {
-            font-size: 0.75rem;
-            color: #ccc;
-            text-transform: uppercase;
-            font-weight: 700;
-            flex: 1;
-        }
-
-        input, select {
-            background: #fff;
-            border: none;
-            color: #000;
-            padding: 10px;
-            border-radius: 8px;
-            width: 140px;
-            text-align: right;
-            font-weight: bold;
-        }
-
-        input.desc {
-            width: 100%;
-            text-align: left;
-            margin-top: 5px;
-            font-weight: normal;
-            font-size: 0.8rem;
-        }
-
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 25px;
-        }
-
-        button {
-            padding: 15px;
-            border-radius: 10px;
-            border: none;
-            font-weight: 900;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .dl-btn { background: #f1c40f; color: #000; grid-column: span 2; }
-        .pr-btn { background: #fff; color: #000; }
-        .cl-btn { background: #e74c3c; color: #fff; }
-
-        .designer-credit {
-            margin-top: 15px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: rgba(255,255,255,0.6);
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
-
-        #receipt {
-            background: #fff;
-            width: 80mm;
-            padding: 25px;
-            color: #000;
-            box-sizing: border-box;
-            border: 2px solid #000;
-            display: block;
-        }
-
-        .header {
-            text-align: center;
-            border-bottom: 5px solid #000;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-
-        .res-name { font-size: 22px; font-weight: 900; }
-
-        .item {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .total-box {
-            border-top: 4px solid #000;
-            margin-top: 15px;
-            padding-top: 10px;
-            font-size: 26px;
-            font-weight: 900;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .ref-box {
-            margin-top: 20px;
-            border-top: 2px dashed #000;
-            padding-top: 15px;
-        }
-
-        .exp-desc {
-            font-size: 13px;
-            font-style: italic;
-            color: #000;
-            margin-top: -5px;
-            margin-bottom: 10px;
-            display: block;
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="admin-panel">
-    <h2 style="text-align: center; margin-top:0; letter-spacing: 2px;">SALES SUMMARY</h2>
-
-    <div class="row">
-        <label>Restaurant</label>
-        <select id="resSelector" onchange="update()">
-            <option value="NAWAAB INDIAN RESTAURANT">Nawaab Indian Restaurant</option>
-        </select>
-    </div>
-
-    <div class="row"><label>Cash</label><input type="number" id="i-cash" oninput="update()"></div>
-    <div class="row"><label>Card</label><input type="number" id="i-card" oninput="update()"></div>
-    <div class="row"><label>Web</label><input type="number" id="i-web" oninput="update()"></div>
-    <div class="row"><label>Just Eat</label><input type="number" id="i-je" oninput="update()"></div>
-    <div class="row"><label>Uber Eat</label><input type="number" id="i-ue" oninput="update()"></div>
-    <div class="row"><label>Deliveroo</label><input type="number" id="i-dr" oninput="update()"></div>
-    <div class="row"><label>Foodhub</label><input type="number" id="i-fh" oninput="update()"></div>
-
-    <div style="margin: 20px 0; height: 1px; background: rgba(255,255,255,0.2);"></div>
-
-    <div class="row"><label>Expenses</label><input type="number" id="i-exp" oninput="update()"></div>
-    <div class="row" style="margin-top: -10px;"><label></label><input type="text" id="i-exp-desc" class="desc" oninput="update()"></div>
-    <div class="row"><label>Till Left</label><input type="number" id="i-till" oninput="update()"></div>
-
-    <div class="btn-group">
-        <button class="dl-btn" onclick="downloadImage()">Download JPEG</button>
-        <button class="pr-btn" onclick="printReceipt()">Print Receipt</button>
-        <button class="cl-btn" onclick="clearAll()">Reset Form</button>
-    </div>
-
-    <div class="designer-credit">DESIGNED BY YAMIN</div>
-</div>
-
-<div id="receipt">
-    <div class="header">
-        <div class="res-name" id="r-name">NAWAAB INDIAN RESTAURANT</div>
-        <div id="r-date" style="font-weight: 700; margin-top: 5px;">DATE: --/--/----</div>
-    </div>
-
-    <div class="item"><span>CASH SALES</span><span id="r-cash">£0.00</span></div>
-    <div class="item"><span>CARD SALES</span><span id="r-card">£0.00</span></div>
-    <div class="item"><span>WEB SALES</span><span id="r-web">£0.00</span></div>
-    <div class="item"><span>JUST EAT</span><span id="r-je">£0.00</span></div>
-    <div class="item"><span>UBER EAT</span><span id="r-ue">£0.00</span></div>
-    <div class="item"><span>DELIVEROO</span><span id="r-dr">£0.00</span></div>
-    <div class="item"><span>FOODHUB</span><span id="r-fh">£0.00</span></div>
-
-    <div class="total-box">
-        <span>TOTAL</span>
-        <span id="r-total">£0.00</span>
-    </div>
-
-    <div class="ref-box">
-        <div class="item"><span>EXPENSES</span><span id="r-exp">£0.00</span></div>
-        <span id="r-exp-desc" class="exp-desc"></span>
-        <div class="item"><span>TILL LEFT</span><span id="r-till">£0.00</span></div>
-    </div>
-
-    <p style="text-align: center; font-size: 11px; margin-top: 30px; font-weight: 900; border-top: 1px solid #000; padding-top: 10px;">
-        *** END OF SUMMARY ***
-    </p>
-</div>
-
-<script>
-function update() {
-    const name = document.getElementById('resSelector').value;
-    const keys = ['cash','card','web','je','ue','dr','fh','exp','till'];
-    let totals = 0;
-
-    keys.forEach(k => {
-        let val = parseFloat(document.getElementById('i-' + k).value) || 0;
-        document.getElementById('r-' + k).innerText = '£' + val.toFixed(2);
-        if (!['exp','till'].includes(k)) totals += val;
-    });
-
-    document.getElementById('r-name').innerText = name;
-    document.getElementById('r-total').innerText = '£' + totals.toFixed(2);
-    document.getElementById('r-date').innerText = 'DATE: ' + new Date().toLocaleDateString('en-GB');
-
-    const desc = document.getElementById('i-exp-desc').value;
-    document.getElementById('r-exp-desc').innerText = desc ? '(' + desc + ')' : '';
-}
-
-function printReceipt() {
-    const content = document.getElementById('receipt').innerHTML;
-    const printWindow = window.open('', '', 'height=600,width=400');
-    printWindow.document.write('<html><head><title>Print Receipt</title>');
-    printWindow.document.write('<style>body{font-family:sans-serif;padding:20px;} .header{text-align:center;border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:15px;} .res-name{font-size:20px;font-weight:bold;} .item{display:flex;justify-content:space-between;margin:5px 0;font-size:14px;font-weight:bold;} .total-box{border-top:3px solid #000;margin-top:10px;padding-top:10px;font-size:20px;font-weight:bold;display:flex;justify-content:space-between;} .ref-box{margin-top:15px;border-top:1px dashed #000;padding-top:10px;} .exp-desc{font-size:12px;font-style:italic;}</style>');
-    printWindow.document.write('</head><body>');
-    printWindow.document.write(content);
-    printWindow.document.write('</body></html>');
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
-}
-
-function downloadImage() {
-    html2canvas(document.querySelector("#receipt"), { scale: 3 }).then(canvas => {
-        let link = document.createElement('a');
-        link.download = document.getElementById('resSelector').value + '_Summary.jpg';
-        link.href = canvas.toDataURL("image/jpeg", 1.0);
-        link.click();
-    });
-}
-
-function clearAll() {
-    document.querySelectorAll('input').forEach(i => i.value = '');
-    update();
-}
-
-update();
-</script>
-
 </body>
 </html>
